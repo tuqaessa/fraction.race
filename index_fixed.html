@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>سباق أبطال الكسور</title>
+<style>
+  body{font-family:"Noto Kufi Arabic","Arial",sans-serif;background:#f7f9fc;margin:0;padding:20px;color:#123;}
+  .container{max-width:900px;margin:0 auto;background:#fff;border-radius:12px;box-shadow:0 6px 18px rgba(0,0,0,0.08);overflow:hidden;}
+  header{padding:18px 24px;background:linear-gradient(90deg,#56CCF2,#2F80ED);color:#fff}
+  header h1{margin:0;font-size:20px}
+  .content{padding:20px}
+  .track{position:relative;height:140px;background:linear-gradient(90deg,#e9f5ff,#fff);border-radius:10px;border:2px dashed #d0e8ff;overflow:hidden}
+  .bike{position:absolute;bottom:12px;right:12px;width:80px;height:60px;background:#ff7a59;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;box-shadow:0 4px 8px rgba(0,0,0,0.15)}
+  .finish{position:absolute;left:12px;top:0;height:100%;width:6px;background:gold}
+  .question{margin-top:18px;font-size:18px}
+  .choices{margin-top:12px;display:flex;gap:12px;flex-wrap:wrap}
+  .btn{padding:10px 16px;border-radius:8px;border:2px solid #2F80ED;background:#fff;cursor:pointer;font-size:18px;transition:0.3s}
+  .btn.correct{background:#2dca6a;color:#fff;border-color:#2dca6a}
+  .btn.wrong{background:#ff6b6b;color:#fff;border-color:#ff6b6b}
+  .hint{margin-top:12px;color:#b33}
+  footer{padding:14px 20px;background:#fafafa;border-top:1px solid #eee;display:flex;gap:12px;align-items:center;justify-content:space-between}
+  .small{font-size:14px;color:#666}
+  .score{font-weight:700;color:#2F80ED}
+  .center{display:flex;align-items:center;gap:8px}
+  .hidden{display:none}
+  .play-again{background:#2F80ED;color:#fff;border:none;padding:10px 14px;border-radius:8px;cursor:pointer;font-size:18px}
+  .rtl-text{direction:rtl;text-align:right}
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <h1>🏁 سباق أبطال الكسور — قارن الكسور وانطلق!</h1>
+  </header>
+  <div class="content">
+    <div class="intro rtl-text" id="intro">
+      <p>مرحبًا يا أبطال! 🚀 ساعدوا بطل الكسور في الوصول إلى الكنز عبر الإجابة على الأسئلة. اختاروا الكسر <strong>الأكبر</strong> لكل سؤال. عند الإجابة الصحيحة تتقدم الدراجة؛ وعند الإجابة الخاطئة ستحصلون على تلميح لتصححوا إجابتكم.</p>
+      <button class="play-again" id="startBtn">▶️ ابدأ اللعبة</button>
+    </div>
+
+    <div id="gameArea" class="hidden">
+      <div class="track" id="track">
+        <div class="finish" title="خط النهاية"></div>
+        <div class="bike" id="bike">🏍️</div>
+      </div>
+
+      <div class="question" id="question"></div>
+      <div class="choices" id="choices"></div>
+      <div class="hint" id="hint"></div>
+
+      <footer>
+        <div class="center"><div class="small">الدرجة:</div><div class="score" id="score">0</div></div>
+        <div class="small">السؤال <span id="qIndex">0</span> من <span id="qTotal">0</span></div>
+      </footer>
+    </div>
+
+    <div id="endArea" class="hidden" style="padding:18px;text-align:center;">
+      <h2>🎊 مبروك! أنهيت السباق بنجاح!</h2>
+      <p class="rtl-text">لقد ساعدت بطل الكسور في الفوز. نتيجتك: <span id="finalScore"></span> من <span id="maxScore"></span>.</p>
+      <button class="play-again" id="replayBtn">🔁 العب مرة أخرى</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const questions=[
+  {q:"من أيهما أكبر؟",a:"٣/٨",b:"٥/٨",correct:"b",hint:"المقامات متساوية؛ الكسر ذو البسط الأكبر هو الأكبر."},
+  {q:"من أيهما أكبر؟",a:"١/٢",b:"٣/٤",correct:"b",hint:"حوّل ١/٢ إلى ٢/٤ وستجد أن ٣/٤ أكبر."},
+  {q:"من أيهما أكبر؟",a:"٢/٣",b:"٣/٤",correct:"b",hint:"بتوحيد المقامات: ٨/١٢ و٩/١٢؛ إذن ٣/٤ أكبر."},
+  {q:"من أيهما أكبر؟",a:"٤/٥",b:"٥/٦",correct:"b",hint:"حوّل إلى كسور عشرية: ٠.٨ مقابل ٠.٨٣٣؛ ٥/٦ أكبر."},
+  {q:"من أيهما أكبر؟",a:"٢/٦",b:"٣/٦",correct:"b",hint:"المقامات متساوية؛ البسط الأكبر يعني الكسر الأكبر."}
+];
+
+const messages=[
+  "🌟 رائع يا بطل الكسور!",
+  "💪 إجابة مميزة! استمر!",
+  "🏍️ أحسنت! الدراجة تقترب من الكنز!",
+  "👏 ممتاز! لقد اخترت الكسر الأكبر!",
+  "🔥 رائع! استمر بالسرعة نحو الفوز!"
+];
+
+let score=0,index=0;
+const max=questions.length;
+const intro=document.getElementById('intro');
+const gameArea=document.getElementById('gameArea');
+const endArea=document.getElementById('endArea');
+const questionEl=document.getElementById('question');
+const choicesEl=document.getElementById('choices');
+const hintEl=document.getElementById('hint');
+const scoreEl=document.getElementById('score');
+const bike=document.getElementById('bike');
+const qIndex=document.getElementById('qIndex');
+const qTotal=document.getElementById('qTotal');
+const finalScore=document.getElementById('finalScore');
+const maxScore=document.getElementById('maxScore');
+
+qTotal.textContent=max;
+
+document.addEventListener('DOMContentLoaded', function() {
+  document.getElementById('startBtn').addEventListener('click', startGame);
+  document.getElementById('replayBtn').addEventListener('click', resetGame);
+});
+
+function startGame(){
+  intro.classList.add('hidden');
+  gameArea.classList.remove('hidden');
+  score=0; index=0;
+  scoreEl.textContent=score;
+  qIndex.textContent=1;
+  bike.style.right='12px';
+  showQuestion();
+}
+
+function showQuestion(){
+  hintEl.textContent='';
+  const item=questions[index];
+  questionEl.innerHTML=`<strong>${item.q}</strong>`;
+  choicesEl.innerHTML='';
+  const btnA=document.createElement('button');
+  btnA.className='btn';
+  btnA.textContent=item.a;
+  btnA.onclick=()=>checkAnswer('a',item);
+  const btnB=document.createElement('button');
+  btnB.className='btn';
+  btnB.textContent=item.b;
+  btnB.onclick=()=>checkAnswer('b',item);
+  choicesEl.appendChild(btnA);
+  choicesEl.appendChild(btnB);
+}
+
+function checkAnswer(choice,item){
+  const btns=choicesEl.querySelectorAll('button');
+  if(choice===item.correct){
+    markButtons(choice,true);
+    score++; scoreEl.textContent=score;
+    const msg=messages[Math.floor(Math.random()*messages.length)];
+    hintEl.textContent='✅ '+msg;
+    advanceBike();
+    setTimeout(()=>{
+      index++;
+      if(index<max){ qIndex.textContent=index+1; showQuestion(); }
+      else{ endGame(); }
+    },1100);
+  } else {
+    markButtons(choice,false);
+    hintEl.textContent='❗ إجابة خاطئة. '+item.hint+' جرّب مرة أخرى.';
+  }
+}
+
+function markButtons(choice,ok){
+  const btns=choicesEl.querySelectorAll('button');
+  btns.forEach(b=>b.classList.remove('correct','wrong'));
+  const chosen=(choice==='a')?btns[0]:btns[1];
+  if(ok)chosen.classList.add('correct');else chosen.classList.add('wrong');
+}
+
+function advanceBike(){
+  const trackWidth=document.getElementById('track').clientWidth;
+  const step=(trackWidth-100)/max;
+  const curRight=parseFloat(bike.style.right);
+  const newRight=curRight+step;
+  bike.style.transition='right 0.7s ease-out';
+  bike.style.right=Math.min(newRight,trackWidth-100)+'px';
+}
+
+function endGame(){
+  gameArea.classList.add('hidden');
+  endArea.classList.remove('hidden');
+  finalScore.textContent=score;
+  maxScore.textContent=max;
+}
+
+function resetGame(){
+  endArea.classList.add('hidden');
+  intro.classList.remove('hidden');
+  bike.style.right='12px';
+}
+</script>
+</body>
+</html>
